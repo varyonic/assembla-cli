@@ -20,6 +20,34 @@ go install github.com/eugene-software/assembla-cli@latest
 
 Download from [GitHub Releases](https://github.com/eugene-software/assembla-cli/releases).
 
+## Setup
+
+Get your API credentials at [assembla.com/user/edit/manage_clients](https://www.assembla.com/user/edit/manage_clients).
+
+### Option 1: Interactive login
+
+```bash
+assembla auth login
+```
+
+### Option 2: Environment variables
+
+```bash
+export ASSEMBLA_API_KEY="your-api-key"
+export ASSEMBLA_API_SECRET="your-api-secret"
+export ASSEMBLA_SPACE="your-space-wiki-name"
+```
+
+### Option 3: Config file
+
+Create `.assembla.yml` in your project root (or `~/.config/assembla/config.yml` globally):
+
+```yaml
+api_key: "your-api-key"
+api_secret: "your-api-secret"
+space: "your-space-wiki-name"
+```
+
 ## Quick Start
 
 ```bash
