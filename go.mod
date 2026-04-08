@@ -1,6 +1,6 @@
 module github.com/eugene-software/assembla-cli
 
-go 1.26.2
+go 1.21
 
 require (
 	github.com/spf13/cobra v1.10.2
