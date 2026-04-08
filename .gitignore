@@ -1,5 +1,2 @@
-.venv/
-*.egg-info/
-__pycache__/
+assembla
 dist/
-build/

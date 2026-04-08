@@ -1,83 +1,103 @@
-# assembla-cli
+# Assembla CLI
 
-Command-line tool for managing Assembla tickets, comments, milestones, and spaces.
+A command-line interface for the Assembla API. Manage tickets, comments, spaces, milestones, and users from your terminal.
 
 ## Installation
 
+### Homebrew (macOS & Linux)
+
 ```bash
-pip install git+https://github.com/eugene-software/assembla-cli.git
+brew install eugene-software/tap/assembla-cli
 ```
 
-## Setup
-
-Get your API credentials at [assembla.com/user/edit/manage_clients](https://www.assembla.com/user/edit/manage_clients).
-
-### Option 1: Interactive login
+### Go
 
 ```bash
+go install github.com/eugene-software/assembla-cli@latest
+```
+
+### Binary
+
+Download from [GitHub Releases](https://github.com/eugene-software/assembla-cli/releases).
+
+## Quick Start
+
+```bash
+# Authenticate (interactive)
 assembla auth login
-```
 
-### Option 2: Environment variables
-
-```bash
-export ASSEMBLA_API_KEY="your-api-key"
-export ASSEMBLA_API_SECRET="your-api-secret"
-export ASSEMBLA_SPACE="your-space-wiki-name"
-```
-
-### Option 3: Config file
-
-Create `.assembla.yml` in your project root (or `~/.config/assembla/config.yml` globally):
-
-```yaml
-api_key: "your-api-key"
-api_secret: "your-api-secret"
-space: "your-space-wiki-name"
-```
-
-## Usage
-
-```bash
-# Auth
-assembla auth login
-assembla auth status
-
-# Tickets
+# List tickets
 assembla ticket list
-assembla ticket list --status "In Progress" --assignee "john"
+
+# Show a specific ticket
 assembla ticket show 12345
-assembla ticket create --title "Bug report" --description "Details here"
-assembla ticket update 12345 --status "Fixed"
+
+# Create a ticket
+assembla ticket create -t "Bug: login fails" -d "Steps to reproduce..."
+
+# Move a ticket to a new status
 assembla ticket move 12345 "In Progress"
 
-# Comments
-assembla comment list 12345
-assembla comment add 12345 "This is fixed in v2.1"
+# Add a comment
+assembla comment add 12345 "Working on this now"
 
-# Spaces
+# List spaces
 assembla space list
-assembla space show
 
-# Statuses
+# List statuses
 assembla status list
 
-# Milestones
+# List milestones
 assembla milestone list
-assembla milestone list --all
-assembla milestone show <milestone-id>
 
-# Users
+# Show current user
 assembla user me
-assembla user list
 ```
 
-### Global options
+## Configuration
+
+Configuration is loaded with the following precedence (highest first):
+
+1. Environment variables (`ASSEMBLA_API_KEY`, `ASSEMBLA_API_SECRET`, `ASSEMBLA_SPACE`, `ASSEMBLA_API_URL`)
+2. Project config (`.assembla.yml` in current or parent directory)
+3. Global config (`~/.config/assembla/config.yml`)
+
+### Global Flags
+
+- `--space` - Override the default space
+- `--api-key` - Override the API key
+- `--api-secret` - Override the API secret
+
+### JSON Output
+
+All data commands support `--json` for machine-readable output:
 
 ```bash
-assembla --space other-space ticket list    # Override space
-assembla ticket list --json                 # JSON output
+assembla ticket list --json
+assembla ticket show 12345 --json
 ```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `auth login` | Authenticate with Assembla |
+| `auth logout` | Remove stored credentials |
+| `auth status` | Show authentication status |
+| `ticket list` | List tickets |
+| `ticket show` | Show ticket details |
+| `ticket create` | Create a new ticket |
+| `ticket update` | Update an existing ticket |
+| `ticket move` | Move ticket to a new status |
+| `comment list` | List ticket comments |
+| `comment add` | Add a comment to a ticket |
+| `space list` | List available spaces |
+| `space show` | Show space details |
+| `status list` | List ticket statuses |
+| `milestone list` | List milestones |
+| `milestone show` | Show milestone details |
+| `user me` | Show current user |
+| `user list` | List users in space |
 
 ## License
 
