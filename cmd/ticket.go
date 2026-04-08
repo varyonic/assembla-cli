@@ -51,7 +51,7 @@ var ticketListCmd = &cobra.Command{
 		} else {
 			internal.PrintTable(
 				internal.ToSlice(data),
-				[]string{"number", "summary", "status_name", "assigned_to_id", "priority"},
+				[]string{"number", "summary", "status", "assigned_to_id", "priority"},
 				[]string{"#", "Summary", "Status", "Assignee", "Priority"},
 			)
 		}
@@ -77,7 +77,7 @@ var ticketShowCmd = &cobra.Command{
 			internal.PrintJSON(data)
 		} else {
 			internal.PrintDetail(data, []string{
-				"number", "summary", "description", "status_name",
+				"number", "summary", "description", "status",
 				"priority", "assigned_to_id", "milestone_id",
 				"created_on", "updated_at",
 			})
