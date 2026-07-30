@@ -1,8 +1,11 @@
 package internal
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -11,6 +14,83 @@ var (
 	ConfigDir        string
 	GlobalConfigFile string
 )
+
+// Keys a configuration file is allowed to set. The default is deny: a key that
+// some part of the code happens to read does not become file-settable unless it
+// is listed here, and the loader's own "_" markers can never be forged.
+var (
+	globalConfigKeys = map[string]bool{
+		"api_key":    true,
+		"api_secret": true,
+		"space":      true,
+		"api_url":    true,
+	}
+
+	// A project .assembla.yml can arrive as part of a cloned repository, so it does
+	// not get to choose where credentials are sent: api_url is deliberately absent.
+	// Set it in the global config or ASSEMBLA_API_URL instead.
+	projectConfigKeys = map[string]bool{
+		"api_key":    true,
+		"api_secret": true,
+		"space":      true,
+	}
+)
+
+// mergeAllowedKeys copies the permitted keys of src into dst, ignoring the rest.
+func mergeAllowedKeys(dst, src map[string]interface{}, allowed map[string]bool) {
+	for key, value := range src {
+		if allowed[key] {
+			dst[key] = value
+		}
+	}
+}
+
+// warnAboutIgnoredKeys reports keys the loader will not act on, so a misspelled
+// setting does not fail silently. Keys are reported in a stable order.
+func warnAboutIgnoredKeys(path string, fileConfig map[string]interface{}, allowed map[string]bool) {
+	var ignored []string
+	for key := range fileConfig {
+		if !allowed[key] {
+			ignored = append(ignored, key)
+		}
+	}
+	sort.Strings(ignored)
+
+	for _, key := range ignored {
+		switch {
+		case globalConfigKeys[key]:
+			// Recognised, but deliberately not honoured from this file.
+			fmt.Fprintf(os.Stderr, "Warning: %s: ignoring %q, which is only honoured in %s\n",
+				path, key, GlobalConfigFile)
+		case caseInsensitiveMatch(key, allowed) != "":
+			fmt.Fprintf(os.Stderr, "Warning: %s: ignoring unrecognised key %q (did you mean %q?)\n",
+				path, key, caseInsensitiveMatch(key, allowed))
+		default:
+			fmt.Fprintf(os.Stderr, "Warning: %s: ignoring unrecognised key %q\n", path, key)
+		}
+	}
+}
+
+// caseInsensitiveMatch returns the allowed key that differs from key only in
+// case, which is the most common way a setting is misspelled.
+func caseInsensitiveMatch(key string, allowed map[string]bool) string {
+	for candidate := range allowed {
+		if strings.EqualFold(candidate, key) {
+			return candidate
+		}
+	}
+	return ""
+}
+
+// suppliedAPIURL reports whether a config file both contains api_url and is
+// permitted to set it, so provenance stays correct if the allowlist changes.
+func suppliedAPIURL(fileConfig map[string]interface{}, allowed map[string]bool) bool {
+	if !allowed["api_url"] {
+		return false
+	}
+	_, ok := fileConfig["api_url"]
+	return ok
+}
 
 func init() {
 	home, _ := os.UserHomeDir()
@@ -50,20 +130,27 @@ func readYAML(path string) map[string]interface{} {
 }
 
 // LoadConfig loads configuration with precedence: env vars > project .assembla.yml > global config.
+//
+// The origin of api_url is recorded in _api_url_source, because credentials are
+// sent to that host and project config is not necessarily trustworthy.
 func LoadConfig() map[string]interface{} {
 	config := make(map[string]interface{})
+	apiURLSource := SourceDefault
 
 	// 1. Global config
-	for k, v := range readYAML(GlobalConfigFile) {
-		config[k] = v
+	globalConfig := readYAML(GlobalConfigFile)
+	warnAboutIgnoredKeys(GlobalConfigFile, globalConfig, globalConfigKeys)
+	mergeAllowedKeys(config, globalConfig, globalConfigKeys)
+	if suppliedAPIURL(globalConfig, globalConfigKeys) {
+		apiURLSource = SourceGlobal
 	}
 
-	// 2. Project config (overrides global)
+	// 2. Project config (overrides global, except for api_url which it may not set)
 	projectFile := findProjectConfig()
 	if projectFile != "" {
-		for k, v := range readYAML(projectFile) {
-			config[k] = v
-		}
+		projectConfig := readYAML(projectFile)
+		warnAboutIgnoredKeys(projectFile, projectConfig, projectConfigKeys)
+		mergeAllowedKeys(config, projectConfig, projectConfigKeys)
 		config["_project_config"] = projectFile
 	}
 
@@ -77,13 +164,17 @@ func LoadConfig() map[string]interface{} {
 	for envVar, key := range envMap {
 		if value := os.Getenv(envVar); value != "" {
 			config[key] = value
+			if key == "api_url" {
+				apiURLSource = SourceEnv
+			}
 		}
 	}
 
 	// Default API URL
 	if _, ok := config["api_url"]; !ok {
-		config["api_url"] = "https://api.assembla.com"
+		config["api_url"] = DefaultAPIURL
 	}
+	config["_api_url_source"] = apiURLSource
 
 	return config
 }

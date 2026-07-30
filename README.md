@@ -87,8 +87,15 @@ assembla user me
 Configuration is loaded with the following precedence (highest first):
 
 1. Environment variables (`ASSEMBLA_API_KEY`, `ASSEMBLA_API_SECRET`, `ASSEMBLA_SPACE`, `ASSEMBLA_API_URL`)
-2. Project config (`.assembla.yml` in current or parent directory)
-3. Global config (`~/.config/assembla/config.yml`)
+2. Project config (`.assembla.yml` in current or parent directory) — `api_key`, `api_secret`, `space`
+3. Global config (`~/.config/assembla/config.yml`) — the above plus `api_url`
+
+Only these keys are read; anything else in a config file is ignored with a warning.
+
+`api_url` is deliberately **not** settable from a project `.assembla.yml`. That file
+is found by searching parent directories, so it can arrive with a cloned
+repository, and it must not be able to decide where your credentials are sent. For
+a non-default endpoint use the global config or `ASSEMBLA_API_URL`.
 
 ### Global Flags
 

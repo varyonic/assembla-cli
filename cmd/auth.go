@@ -188,11 +188,12 @@ var authStatusCmd = &cobra.Command{
 			space = v
 		}
 
-		apiURL, _ := config["api_url"].(string)
+		rawURL, _ := config["api_url"].(string)
+		urlSource, _ := config["_api_url_source"].(string)
 
 		fmt.Printf("API Key:  %s\n", maskedKey)
 		fmt.Printf("Space:    %s\n", space)
-		fmt.Printf("API URL:  %s\n", apiURL)
+		fmt.Printf("API URL:  %s (%s)\n", rawURL, urlSource)
 
 		if _, err := os.Stat(internal.GlobalConfigFile); err == nil {
 			fmt.Printf("\nGlobal config:  %s\n", internal.GlobalConfigFile)
@@ -206,6 +207,13 @@ var authStatusCmd = &cobra.Command{
 		apiSecret, _ := config["api_secret"].(string)
 		if apiSecret == "" {
 			fmt.Println("MISSING API SECRET")
+			return nil
+		}
+
+		apiURL, err := internal.ResolveAPIURL(rawURL, urlSource)
+		if err != nil {
+			fmt.Println("SKIPPED")
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return nil
 		}
 

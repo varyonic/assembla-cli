@@ -59,9 +59,18 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		apiURL := "https://api.assembla.com"
+		rawURL := internal.DefaultAPIURL
 		if v, ok := config["api_url"].(string); ok {
-			apiURL = v
+			rawURL = v
+		}
+		urlSource, _ := config["_api_url_source"].(string)
+
+		// Validated before the client exists, so credentials cannot reach an
+		// unvetted host.
+		apiURL, err := internal.ResolveAPIURL(rawURL, urlSource)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
 		}
 
 		Client = internal.NewAssemblaClient(key, secret, apiURL)

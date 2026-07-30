@@ -22,11 +22,29 @@ type AssemblaClient struct {
 // NewAssemblaClient creates a new API client.
 func NewAssemblaClient(apiKey, apiSecret, apiURL string) *AssemblaClient {
 	return &AssemblaClient{
-		apiURL:     strings.TrimRight(apiURL, "/"),
-		apiKey:     apiKey,
-		apiSecret:  apiSecret,
-		httpClient: &http.Client{},
+		apiURL:    strings.TrimRight(apiURL, "/"),
+		apiKey:    apiKey,
+		apiSecret: apiSecret,
+		httpClient: &http.Client{
+			CheckRedirect: stripCredentialsOnHostChange,
+		},
 	}
+}
+
+// stripCredentialsOnHostChange keeps the API credential headers from being
+// replayed to a different host across a redirect. Go forwards custom headers on
+// redirect and only strips the ones it recognises as sensitive (Authorization,
+// Cookie, ...), which would otherwise let a validated host hand the credentials
+// to an arbitrary third party.
+func stripCredentialsOnHostChange(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	if len(via) > 0 && !strings.EqualFold(req.URL.Host, via[0].URL.Host) {
+		req.Header.Del("X-Api-Key")
+		req.Header.Del("X-Api-Secret")
+	}
+	return nil
 }
 
 func (c *AssemblaClient) request(method, path string, params map[string]string, body interface{}) (*http.Response, error) {
