@@ -10,6 +10,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config files hold the API key and secret, so they are kept owner-only.
+const (
+	secretFileMode os.FileMode = 0600
+	secretDirMode  os.FileMode = 0700
+)
+
 var (
 	ConfigDir        string
 	GlobalConfigFile string
@@ -117,6 +123,38 @@ func findProjectConfig() string {
 	return ""
 }
 
+// writeSecretFile writes data to path with owner-only permissions.
+//
+// os.WriteFile only applies its mode when creating a file, so an existing config
+// left at 0644 by an earlier version is tightened first — before the new secrets
+// land in it, not after. It deliberately writes through symlinks so a config
+// linked into a dotfiles repository keeps working.
+func writeSecretFile(path string, data []byte) error {
+	if info, err := os.Stat(path); err == nil && info.Mode().Perm() != secretFileMode {
+		if err := os.Chmod(path, secretFileMode); err != nil {
+			return err
+		}
+	}
+	return os.WriteFile(path, data, secretFileMode)
+}
+
+// warnIfGroupOrWorldReadable reports a credentials file that other users on the
+// machine can read. Versions of this tool before the permissions fix created it
+// with mode 0644, and reading a config never rewrites it, so those files need a
+// nudge rather than a silent repair.
+func warnIfGroupOrWorldReadable(path string) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	if perm := info.Mode().Perm(); perm&0077 != 0 {
+		fmt.Fprintf(os.Stderr,
+			"Warning: %s holds API credentials but is mode %04o (readable by other users).\n"+
+				"         Fix with: chmod %04o %s\n",
+			path, perm, secretFileMode, path)
+	}
+}
+
 func readYAML(path string) map[string]interface{} {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -138,6 +176,7 @@ func LoadConfig() map[string]interface{} {
 	apiURLSource := SourceDefault
 
 	// 1. Global config
+	warnIfGroupOrWorldReadable(GlobalConfigFile)
 	globalConfig := readYAML(GlobalConfigFile)
 	warnAboutIgnoredKeys(GlobalConfigFile, globalConfig, globalConfigKeys)
 	mergeAllowedKeys(config, globalConfig, globalConfigKeys)
@@ -181,8 +220,14 @@ func LoadConfig() map[string]interface{} {
 
 // SaveGlobalConfig merges data into the global config file.
 func SaveGlobalConfig(data map[string]interface{}) (string, error) {
-	if err := os.MkdirAll(ConfigDir, 0755); err != nil {
+	if err := os.MkdirAll(ConfigDir, secretDirMode); err != nil {
 		return "", err
+	}
+	// MkdirAll leaves an existing directory's mode alone, so tighten it here.
+	if info, err := os.Stat(ConfigDir); err == nil && info.Mode().Perm() != secretDirMode {
+		if err := os.Chmod(ConfigDir, secretDirMode); err != nil {
+			return "", err
+		}
 	}
 	existing := readYAML(GlobalConfigFile)
 	for k, v := range data {
@@ -192,7 +237,7 @@ func SaveGlobalConfig(data map[string]interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(GlobalConfigFile, out, 0644); err != nil {
+	if err := writeSecretFile(GlobalConfigFile, out); err != nil {
 		return "", err
 	}
 	return GlobalConfigFile, nil
@@ -215,7 +260,7 @@ func SaveProjectConfig(data map[string]interface{}, path string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(path, out, 0644); err != nil {
+	if err := writeSecretFile(path, out); err != nil {
 		return "", err
 	}
 	return path, nil
