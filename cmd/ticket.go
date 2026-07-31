@@ -41,7 +41,7 @@ var ticketListCmd = &cobra.Command{
 			params["milestone_id"] = milestone
 		}
 
-		data, err := Client.Get(fmt.Sprintf("/spaces/%s/tickets", space), params)
+		data, err := Client.Get(internal.APIPath("spaces", space, "tickets"), params)
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ var ticketShowCmd = &cobra.Command{
 		asJSON, _ := cmd.Flags().GetBool("json")
 
 		number := args[0]
-		data, err := Client.Get(fmt.Sprintf("/spaces/%s/tickets/%s", space, number), nil)
+		data, err := Client.Get(internal.APIPath("spaces", space, "tickets", number), nil)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ var ticketCreateCmd = &cobra.Command{
 			"ticket": ticket,
 		}
 
-		data, err := Client.Post(fmt.Sprintf("/spaces/%s/tickets", space), payload)
+		data, err := Client.Post(internal.APIPath("spaces", space, "tickets"), payload)
 		if err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ var ticketUpdateCmd = &cobra.Command{
 			"ticket": ticket,
 		}
 
-		data, err := Client.Put(fmt.Sprintf("/spaces/%s/tickets/%s", space, number), payload)
+		data, err := Client.Put(internal.APIPath("spaces", space, "tickets", number), payload)
 		if err != nil {
 			return err
 		}
@@ -212,7 +212,7 @@ var ticketMoveCmd = &cobra.Command{
 			},
 		}
 
-		_, err := Client.Put(fmt.Sprintf("/spaces/%s/tickets/%s", space, number), payload)
+		_, err := Client.Put(internal.APIPath("spaces", space, "tickets", number), payload)
 		if err != nil {
 			return err
 		}

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/eugene-software/assembla-cli/internal"
 	"github.com/spf13/cobra"
 )
@@ -23,11 +21,11 @@ var milestoneListCmd = &cobra.Command{
 
 		var path string
 		if showAll {
-			path = fmt.Sprintf("/spaces/%s/milestones/all", space)
+			path = internal.APIPath("spaces", space, "milestones", "all")
 		} else if completed {
-			path = fmt.Sprintf("/spaces/%s/milestones/completed", space)
+			path = internal.APIPath("spaces", space, "milestones", "completed")
 		} else {
-			path = fmt.Sprintf("/spaces/%s/milestones/upcoming", space)
+			path = internal.APIPath("spaces", space, "milestones", "upcoming")
 		}
 
 		data, err := Client.Get(path, nil)
@@ -57,7 +55,7 @@ var milestoneShowCmd = &cobra.Command{
 		asJSON, _ := cmd.Flags().GetBool("json")
 		milestoneID := args[0]
 
-		data, err := Client.Get(fmt.Sprintf("/spaces/%s/milestones/%s", space, milestoneID), nil)
+		data, err := Client.Get(internal.APIPath("spaces", space, "milestones", milestoneID), nil)
 		if err != nil {
 			return err
 		}

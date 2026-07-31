@@ -51,7 +51,7 @@ var spaceShowCmd = &cobra.Command{
 			return fmt.Errorf("no space specified; use --space flag or provide space_id argument")
 		}
 
-		data, err := Client.Get(fmt.Sprintf("/spaces/%s", spaceID), nil)
+		data, err := Client.Get(internal.APIPath("spaces", spaceID), nil)
 		if err != nil {
 			return err
 		}

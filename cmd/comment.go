@@ -21,7 +21,7 @@ var commentListCmd = &cobra.Command{
 		asJSON, _ := cmd.Flags().GetBool("json")
 		ticketNumber := args[0]
 
-		data, err := Client.Get(fmt.Sprintf("/spaces/%s/tickets/%s/ticket_comments", space, ticketNumber), nil)
+		data, err := Client.Get(internal.APIPath("spaces", space, "tickets", ticketNumber, "ticket_comments"), nil)
 		if err != nil {
 			return err
 		}
@@ -55,7 +55,7 @@ var commentAddCmd = &cobra.Command{
 			},
 		}
 
-		data, err := Client.Post(fmt.Sprintf("/spaces/%s/tickets/%s/ticket_comments", space, ticketNumber), payload)
+		data, err := Client.Post(internal.APIPath("spaces", space, "tickets", ticketNumber, "ticket_comments"), payload)
 		if err != nil {
 			return err
 		}

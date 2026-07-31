@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/eugene-software/assembla-cli/internal"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +17,7 @@ var statusListCmd = &cobra.Command{
 		space := requireSpace()
 		asJSON, _ := cmd.Flags().GetBool("json")
 
-		data, err := Client.Get(fmt.Sprintf("/spaces/%s/tickets/statuses", space), nil)
+		data, err := Client.Get(internal.APIPath("spaces", space, "tickets", "statuses"), nil)
 		if err != nil {
 			return err
 		}
