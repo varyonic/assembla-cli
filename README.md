@@ -48,6 +48,15 @@ api_secret: "your-api-secret"
 space: "your-space-wiki-name"
 ```
 
+Config files are created with owner-only permissions (`0600`).
+
+> **A project `.assembla.yml` holding `api_key`/`api_secret` sits inside your
+> repository.** `assembla auth login --scope project` adds it to
+> `.git/info/exclude` so it cannot be committed, but that has no effect on a file
+> git already tracks — check with `git status` before committing. To keep
+> credentials out of repositories entirely, put them in the global config and
+> leave only `space` in the project file.
+
 ## Quick Start
 
 ```bash

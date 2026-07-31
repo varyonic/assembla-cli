@@ -110,9 +110,20 @@ var authLoginCmd = &cobra.Command{
 			data["space"] = spaceID
 		}
 
-		var path string
+		var path, ignoreNote string
 		if scope == "project" {
-			path, err = internal.SaveProjectConfig(data, "")
+			projectPath, pathErr := internal.ProjectConfigPath()
+			if pathErr != nil {
+				return fmt.Errorf("failed to locate project config: %w", pathErr)
+			}
+			// Exclude the file from git before the credentials are written into
+			// it, so there is no window in which it could be staged.
+			note, ignoreErr := internal.EnsureProjectConfigIgnored(projectPath)
+			if ignoreErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not update git exclusions: %v\n", ignoreErr)
+			}
+			ignoreNote = note
+			path, err = internal.SaveProjectConfig(data, projectPath)
 		} else {
 			path, err = internal.SaveGlobalConfig(data)
 		}
@@ -124,9 +135,26 @@ var authLoginCmd = &cobra.Command{
 		if spaceID != "" {
 			fmt.Printf("Default space: %s\n", spaceID)
 		}
+		if scope == "project" {
+			printProjectSecretWarning(ignoreNote)
+		}
 
 		return nil
 	},
+}
+
+// printProjectSecretWarning explains that credentials now live in the project
+// directory, and what was done about it.
+func printProjectSecretWarning(ignoreNote string) {
+	fmt.Fprintf(os.Stderr, "\nWARNING: that file holds your API key and secret.\n")
+	if ignoreNote == "" {
+		fmt.Fprintf(os.Stderr, "         It is not inside a git repository, but keep it out of any\n")
+		fmt.Fprintf(os.Stderr, "         archive or backup you share.\n")
+		return
+	}
+	fmt.Fprintf(os.Stderr, "         Git: %s\n", ignoreNote)
+	fmt.Fprintf(os.Stderr, "         Ignore rules do not apply to an already-tracked file. If git\n")
+	fmt.Fprintf(os.Stderr, "         still lists it, untrack it: git rm --cached %s\n", internal.ProjectConfigName)
 }
 
 var authLogoutCmd = &cobra.Command{

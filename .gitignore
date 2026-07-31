@@ -1,2 +1,5 @@
 assembla
 dist/
+
+# May hold API credentials — never commit
+.assembla.yml
