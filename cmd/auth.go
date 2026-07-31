@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,18 +23,22 @@ var authLoginCmd = &cobra.Command{
 	Short: "Authenticate with Assembla",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		scope, _ := cmd.Flags().GetString("scope")
-		reader := bufio.NewReader(os.Stdin)
 
 		fmt.Println("Get your API key/secret at: https://www.assembla.com/user/edit/manage_clients")
 		fmt.Println()
 
 		fmt.Print("API Key: ")
-		apiKey, _ := reader.ReadString('\n')
-		apiKey = strings.TrimSpace(apiKey)
+		apiKey, err := readLine()
+		if err != nil {
+			return fmt.Errorf("failed to read API key: %w", err)
+		}
 
+		// Not echoed: a secret on screen ends up in scrollback and screen shares.
 		fmt.Print("API Secret: ")
-		apiSecret, _ := reader.ReadString('\n')
-		apiSecret = strings.TrimSpace(apiSecret)
+		apiSecret, err := readSecret()
+		if err != nil {
+			return fmt.Errorf("failed to read API secret: %w", err)
+		}
 
 		fmt.Print("\nVerifying credentials... ")
 
@@ -88,8 +91,7 @@ var authLoginCmd = &cobra.Command{
 					}
 
 					fmt.Print("\nDefault space (number or wiki_name, Enter to skip): ")
-					choice, _ := reader.ReadString('\n')
-					choice = strings.TrimSpace(choice)
+					choice, _ := readLine()
 
 					if choice != "" {
 						if num, err := strconv.Atoi(choice); err == nil && num >= 1 && num <= len(spaces) {
@@ -170,10 +172,9 @@ var authLogoutCmd = &cobra.Command{
 			}
 			projectFile := cwd + "/.assembla.yml"
 			if _, err := os.Stat(projectFile); err == nil {
-				reader := bufio.NewReader(os.Stdin)
 				fmt.Printf("Remove %s? [y/N]: ", projectFile)
-				answer, _ := reader.ReadString('\n')
-				answer = strings.TrimSpace(strings.ToLower(answer))
+				answer, _ := readLine()
+				answer = strings.ToLower(answer)
 				if answer == "y" || answer == "yes" {
 					os.Remove(projectFile)
 					fmt.Printf("Removed %s\n", projectFile)
