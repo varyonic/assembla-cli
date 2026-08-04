@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The version go.mod declares. Tested so the claim stays honest: the
+          # code must keep building with the minimum it advertises.
+          - os: ubuntu-latest
+            go: "1.21"
+          - os: ubuntu-latest
+            go: "stable"
+          # macOS on stable only. Go 1.21's internal linker emits test binaries
+          # that will not launch on current macOS ("missing LC_UUID load
+          # command"), which is a toolchain problem rather than a code problem.
+          - os: macos-latest
+            go: "stable"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - run: go build ./...
+
+      - run: go vet ./...
+
+      # -race because the config loader and the API client both mutate shared
+      # package state, and the tests swap os.Stdin/os.Stderr around.
+      - run: go test -race ./...
+
+  quality:
+    name: format and modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      # gofmt -l exits 0 even when it lists files, so the result has to be
+      # inspected rather than relied on for the exit status.
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            printf '::error::gofmt is required for:\n%s\n' "$unformatted"
+            exit 1
+          fi
+
+      # Catches a dependency left marked "// indirect" after a go get, and any
+      # go.sum drift.
+      - name: go.mod and go.sum are tidy
+        run: go mod tidy -diff
